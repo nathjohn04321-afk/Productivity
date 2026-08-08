@@ -11,7 +11,11 @@ interface GoalStoreState {
 }
 
 export const useGoalStore = create<GoalStoreState>((set) => ({
-  todayGoal: goalRepo.getDailyGoal(todayKey()),
+  todayGoal: {
+    date: todayKey(),
+    targetTasks: goalRepo.DEFAULT_TARGET_TASKS,
+    targetFocusMinutes: goalRepo.DEFAULT_TARGET_FOCUS_MINUTES,
+  },
 
   hydrate: () => {
     set({ todayGoal: goalRepo.getDailyGoal(todayKey()) });

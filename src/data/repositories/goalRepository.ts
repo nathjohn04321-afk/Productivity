@@ -1,8 +1,8 @@
 import { getDb } from '../db/client';
 import type { DailyGoal } from '@/domain/models';
 
-const DEFAULT_TARGET_TASKS = 5;
-const DEFAULT_TARGET_FOCUS_MINUTES = 60;
+export const DEFAULT_TARGET_TASKS = 5;
+export const DEFAULT_TARGET_FOCUS_MINUTES = 60;
 
 export function getDailyGoal(date: string): DailyGoal {
   const db = getDb();
