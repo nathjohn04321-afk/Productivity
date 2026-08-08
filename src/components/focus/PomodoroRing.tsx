@@ -1,11 +1,6 @@
-import React, { useEffect } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import Animated, {
-  useAnimatedProps,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
 import { colors, typography } from '@/theme';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
@@ -29,15 +24,22 @@ export function PomodoroRing({
 }: PomodoroRingProps) {
   const radius = (size - strokeWidth) / 2;
   const circumference = 2 * Math.PI * radius;
-  const animatedProgress = useSharedValue(progress);
+  const animatedProgress = useRef(new Animated.Value(progress)).current;
 
   useEffect(() => {
-    animatedProgress.value = withTiming(progress, { duration: 400 });
+    // SVG stroke properties aren't supported by the native driver, so this
+    // animation runs on the JS thread.
+    Animated.timing(animatedProgress, {
+      toValue: progress,
+      duration: 400,
+      useNativeDriver: false,
+    }).start();
   }, [progress, animatedProgress]);
 
-  const animatedProps = useAnimatedProps(() => ({
-    strokeDashoffset: circumference * (1 - animatedProgress.value),
-  }));
+  const strokeDashoffset = animatedProgress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [circumference, 0],
+  });
 
   return (
     <View style={{ width: size, height: size }}>
@@ -57,7 +59,7 @@ export function PomodoroRing({
           stroke={color}
           strokeWidth={strokeWidth}
           strokeDasharray={circumference}
-          animatedProps={animatedProps}
+          strokeDashoffset={strokeDashoffset}
           strokeLinecap="round"
           fill="none"
           rotation={-90}

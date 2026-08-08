@@ -1,11 +1,5 @@
-import React, { useEffect } from 'react';
-import { StyleSheet, View, type DimensionValue } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming,
-} from 'react-native-reanimated';
+import React, { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, View, type DimensionValue } from 'react-native';
 import { colors, radius, spacing } from '@/theme';
 
 interface SkeletonProps {
@@ -15,19 +9,23 @@ interface SkeletonProps {
 }
 
 export function Skeleton({ width = '100%', height = 16, borderRadius = radius.sm }: SkeletonProps) {
-  const opacity = useSharedValue(0.4);
+  const opacity = useRef(new Animated.Value(0.4)).current;
 
   useEffect(() => {
-    opacity.value = withRepeat(withTiming(0.9, { duration: 800 }), -1, true);
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 0.9, duration: 800, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.4, duration: 800, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
   }, [opacity]);
-
-  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
   return (
     <Animated.View
       style={[
-        { width, height, borderRadius, backgroundColor: colors.shimmer },
-        style,
+        { width, height, borderRadius, backgroundColor: colors.shimmer, opacity },
       ]}
     />
   );

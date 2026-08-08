@@ -1,17 +1,13 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   ActivityIndicator,
+  Animated,
   Pressable,
   StyleSheet,
   Text,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
 import { colors, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
@@ -30,8 +26,6 @@ interface ButtonProps {
   haptic?: boolean;
 }
 
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
 export function Button({
   label,
   onPress,
@@ -43,17 +37,13 @@ export function Button({
   style,
   haptic = true,
 }: ButtonProps) {
-  const scale = useSharedValue(1);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+  const scale = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
-    scale.value = withTiming(0.96, { duration: 100 });
+    Animated.timing(scale, { toValue: 0.96, duration: 100, useNativeDriver: true }).start();
   };
   const handlePressOut = () => {
-    scale.value = withTiming(1, { duration: 150 });
+    Animated.timing(scale, { toValue: 1, duration: 150, useNativeDriver: true }).start();
   };
   const handlePress = () => {
     if (disabled || loading) return;
@@ -62,39 +52,40 @@ export function Button({
   };
 
   return (
-    <AnimatedPressable
-      onPress={handlePress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      disabled={disabled || loading}
-      style={[
-        styles.base,
-        variantStyles[variant],
-        sizeStyles[size],
-        (disabled || loading) && styles.disabled,
-        animatedStyle,
-        style,
-      ]}
-      hitSlop={8}
-    >
-      {loading ? (
-        <ActivityIndicator color={variant === 'primary' ? colors.white : colors.accent} />
-      ) : (
-        <>
-          {icon}
-          <Text
-            style={[
-              styles.label,
-              variant === 'primary' && styles.labelPrimary,
-              variant === 'ghost' && styles.labelGhost,
-              variant === 'danger' && styles.labelDanger,
-            ]}
-          >
-            {label}
-          </Text>
-        </>
-      )}
-    </AnimatedPressable>
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Pressable
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={disabled || loading}
+        style={[
+          styles.base,
+          variantStyles[variant],
+          sizeStyles[size],
+          (disabled || loading) && styles.disabled,
+          style,
+        ]}
+        hitSlop={8}
+      >
+        {loading ? (
+          <ActivityIndicator color={variant === 'primary' ? colors.white : colors.accent} />
+        ) : (
+          <>
+            {icon}
+            <Text
+              style={[
+                styles.label,
+                variant === 'primary' && styles.labelPrimary,
+                variant === 'ghost' && styles.labelGhost,
+                variant === 'danger' && styles.labelDanger,
+              ]}
+            >
+              {label}
+            </Text>
+          </>
+        )}
+      </Pressable>
+    </Animated.View>
   );
 }
 

@@ -1,11 +1,5 @@
-import React, { useEffect } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-  Easing,
-} from 'react-native-reanimated';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, radius, spacing } from '@/theme';
 
@@ -18,21 +12,21 @@ interface SheetProps {
 
 export function Sheet({ visible, onClose, children }: SheetProps) {
   const insets = useSafeAreaInsets();
-  const progress = useSharedValue(0);
+  const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    progress.value = withTiming(visible ? 1 : 0, {
+    Animated.timing(progress, {
+      toValue: visible ? 1 : 0,
       duration: 260,
       easing: Easing.out(Easing.cubic),
-    });
+      useNativeDriver: true,
+    }).start();
   }, [visible, progress]);
 
-  const backdropStyle = useAnimatedStyle(() => ({
-    opacity: progress.value,
-  }));
-  const sheetStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: (1 - progress.value) * 400 }],
-  }));
+  const translateY = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [400, 0],
+  });
 
   return (
     <Modal
@@ -43,14 +37,13 @@ export function Sheet({ visible, onClose, children }: SheetProps) {
       statusBarTranslucent
     >
       <View style={styles.container}>
-        <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, backdropStyle]}>
+        <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, { opacity: progress }]}>
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         </Animated.View>
         <Animated.View
           style={[
             styles.sheet,
-            { paddingBottom: insets.bottom + spacing.lg },
-            sheetStyle,
+            { paddingBottom: insets.bottom + spacing.lg, transform: [{ translateY }] },
           ]}
         >
           <View style={styles.handle} />

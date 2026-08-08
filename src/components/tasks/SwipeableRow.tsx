@@ -1,13 +1,5 @@
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
+import React, { useRef } from 'react';
+import { Animated, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 import { colors, radius, spacing, typography } from '@/theme';
 import { haptics } from '@/utils/haptics';
 
@@ -27,63 +19,70 @@ export function SwipeableRow({
   onDelete,
   onReschedule,
 }: SwipeableRowProps) {
-  const translateX = useSharedValue(0);
-  const rowHeight = useSharedValue<number | null>(null);
-  const hasTriggeredHaptic = useSharedValue(false);
+  const translateX = useRef(new Animated.Value(0)).current;
+  const currentX = useRef(0);
+  const hasTriggeredHaptic = useRef(false);
 
-  const triggerHaptic = () => haptics.light();
-  const triggerComplete = () => onComplete();
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gesture) =>
+        Math.abs(gesture.dx) > 12 && Math.abs(gesture.dx) > Math.abs(gesture.dy),
+      onPanResponderMove: (_, gesture) => {
+        const next = Math.max(
+          -RIGHT_ACTIONS_WIDTH - 16,
+          Math.min(gesture.dx, COMPLETE_THRESHOLD + 40)
+        );
+        currentX.current = next;
+        translateX.setValue(next);
 
-  const pan = Gesture.Pan()
-    .activeOffsetX([-12, 12])
-    .failOffsetY([-10, 10])
-    .onUpdate((e) => {
-      const next = e.translationX;
-      translateX.value = Math.max(
-        -RIGHT_ACTIONS_WIDTH - 16,
-        Math.min(next, COMPLETE_THRESHOLD + 40)
-      );
-      const pastThreshold = translateX.value > COMPLETE_THRESHOLD;
-      if (pastThreshold && !hasTriggeredHaptic.value) {
-        hasTriggeredHaptic.value = true;
-        runOnJS(triggerHaptic)();
-      } else if (!pastThreshold) {
-        hasTriggeredHaptic.value = false;
-      }
+        const pastThreshold = next > COMPLETE_THRESHOLD;
+        if (pastThreshold && !hasTriggeredHaptic.current) {
+          hasTriggeredHaptic.current = true;
+          haptics.light();
+        } else if (!pastThreshold) {
+          hasTriggeredHaptic.current = false;
+        }
+      },
+      onPanResponderRelease: () => {
+        if (currentX.current > COMPLETE_THRESHOLD) {
+          Animated.timing(translateX, {
+            toValue: 500,
+            duration: 220,
+            useNativeDriver: true,
+          }).start();
+          onComplete();
+          return;
+        }
+        if (currentX.current < -RIGHT_ACTIONS_WIDTH / 2) {
+          currentX.current = -RIGHT_ACTIONS_WIDTH;
+          Animated.spring(translateX, {
+            toValue: -RIGHT_ACTIONS_WIDTH,
+            damping: 24,
+            useNativeDriver: true,
+          }).start();
+        } else {
+          currentX.current = 0;
+          Animated.spring(translateX, { toValue: 0, damping: 24, useNativeDriver: true }).start();
+        }
+        hasTriggeredHaptic.current = false;
+      },
     })
-    .onEnd(() => {
-      if (translateX.value > COMPLETE_THRESHOLD) {
-        translateX.value = withTiming(500, { duration: 220 });
-        runOnJS(triggerComplete)();
-        return;
-      }
-      if (translateX.value < -RIGHT_ACTIONS_WIDTH / 2) {
-        translateX.value = withSpring(-RIGHT_ACTIONS_WIDTH, { damping: 24 });
-      } else {
-        translateX.value = withSpring(0, { damping: 24 });
-      }
-    });
+  ).current;
 
   const closeRow = () => {
-    translateX.value = withSpring(0, { damping: 24 });
+    currentX.current = 0;
+    Animated.spring(translateX, { toValue: 0, damping: 24, useNativeDriver: true }).start();
   };
 
-  const rowStyle = useAnimatedStyle(() => ({
-    transform: [{ translateX: translateX.value }],
-  }));
-
-  const completeHintStyle = useAnimatedStyle(() => ({
-    opacity: Math.min(Math.max(translateX.value / COMPLETE_THRESHOLD, 0), 1),
-  }));
+  const completeHintOpacity = translateX.interpolate({
+    inputRange: [0, COMPLETE_THRESHOLD],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
 
   return (
-    <View
-      style={styles.wrapper}
-      onLayout={(e) => {
-        rowHeight.value = e.nativeEvent.layout.height;
-      }}
-    >
-      <Animated.View style={[styles.completeHint, completeHintStyle]}>
+    <View style={styles.wrapper}>
+      <Animated.View style={[styles.completeHint, { opacity: completeHintOpacity }]}>
         <Text style={styles.completeHintText}>✓ Complete</Text>
       </Animated.View>
 
@@ -109,9 +108,9 @@ export function SwipeableRow({
         </Pressable>
       </View>
 
-      <GestureDetector gesture={pan}>
-        <Animated.View style={rowStyle}>{children}</Animated.View>
-      </GestureDetector>
+      <Animated.View style={{ transform: [{ translateX }] }} {...panResponder.panHandlers}>
+        {children}
+      </Animated.View>
     </View>
   );
 }

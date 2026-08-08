@@ -1,12 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import Animated, {
-  LinearTransition,
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-} from 'react-native-reanimated';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, PanResponder, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { Task } from '@/domain/models';
 import { colors, radius, spacing } from '@/theme';
 import { haptics } from '@/utils/haptics';
@@ -58,10 +51,7 @@ export function TaskList({
         const task = byId.get(id);
         if (!task) return null;
         return (
-          <Animated.View
-            key={id}
-            layout={draggingId === id ? undefined : LinearTransition.duration(180)}
-          >
+          <View key={id}>
             <SwipeableRow
               onComplete={() => onToggleComplete(id)}
               onDelete={() => onDelete(id)}
@@ -93,7 +83,7 @@ export function TaskList({
                 <TaskCard task={task} onToggleComplete={() => onToggleComplete(id)} />
               )}
             </SwipeableRow>
-          </Animated.View>
+          </View>
         );
       })}
     </View>
@@ -119,52 +109,51 @@ function DraggableCard({
   onDragEnd,
   onToggleComplete,
 }: DraggableCardProps) {
-  const translateY = useSharedValue(0);
+  const translateY = useRef(new Animated.Value(0)).current;
 
-  const startDrag = () => onDragStart();
-  const moveDrag = (newIndex: number) => onDragMove(newIndex);
-  const endDrag = () => {
-    translateY.value = 0;
-    onDragEnd();
-  };
-
-  const pan = Gesture.Pan()
-    .activateAfterLongPress(220)
-    .onStart(() => {
-      runOnJS(startDrag)();
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        onDragStart();
+      },
+      onPanResponderMove: (_, gesture) => {
+        translateY.setValue(gesture.dy);
+        const currentIndex = order.indexOf(task.id);
+        const proposedIndex = Math.max(
+          0,
+          Math.min(order.length - 1, currentIndex + Math.round(gesture.dy / ROW_HEIGHT))
+        );
+        if (proposedIndex !== currentIndex) {
+          onDragMove(proposedIndex);
+        }
+      },
+      onPanResponderRelease: () => {
+        translateY.setValue(0);
+        onDragEnd();
+      },
+      onPanResponderTerminate: () => {
+        translateY.setValue(0);
+        onDragEnd();
+      },
     })
-    .onUpdate((e) => {
-      translateY.value = e.translationY;
-      const currentIndex = order.indexOf(task.id);
-      const proposedIndex = Math.max(
-        0,
-        Math.min(order.length - 1, currentIndex + Math.round(e.translationY / ROW_HEIGHT))
-      );
-      if (proposedIndex !== currentIndex) {
-        runOnJS(moveDrag)(proposedIndex);
-      }
-    })
-    .onEnd(() => {
-      runOnJS(endDrag)();
-    });
-
-  const style = useAnimatedStyle(() => ({
-    transform: [{ translateY: isDragging ? translateY.value : 0 }],
-    zIndex: isDragging ? 10 : 0,
-    opacity: isDragging ? 0.94 : 1,
-  }));
+  ).current;
 
   return (
-    <Animated.View style={style}>
+    <Animated.View
+      style={{
+        transform: [{ translateY }],
+        zIndex: isDragging ? 10 : 0,
+        opacity: isDragging ? 0.94 : 1,
+      }}
+    >
       <TaskCard
         task={task}
         onToggleComplete={onToggleComplete}
         dragHandle={
-          <GestureDetector gesture={pan}>
-            <Pressable style={styles.handle} hitSlop={10}>
-              <Text style={styles.handleIcon}>≡</Text>
-            </Pressable>
-          </GestureDetector>
+          <Pressable style={styles.handle} hitSlop={10} {...panResponder.panHandlers}>
+            <Text style={styles.handleIcon}>≡</Text>
+          </Pressable>
         }
       />
     </Animated.View>
