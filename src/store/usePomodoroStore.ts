@@ -32,6 +32,15 @@ function secondsFor(phase: PomodoroPhase): number {
   return PHASE_MINUTES[phase] * 60;
 }
 
+let intervalId: ReturnType<typeof setInterval> | null = null;
+
+function clearTimer() {
+  if (intervalId !== null) {
+    clearInterval(intervalId);
+    intervalId = null;
+  }
+}
+
 export const usePomodoroStore = create<PomodoroStoreState>((set, get) => ({
   sessions: [],
   phase: 'focus',
@@ -48,26 +57,32 @@ export const usePomodoroStore = create<PomodoroStoreState>((set, get) => ({
 
   start: () => {
     haptics.medium();
+    clearTimer();
+    intervalId = setInterval(() => get().tick(), 1000);
     set({ isRunning: true });
   },
 
   pause: () => {
     haptics.light();
+    clearTimer();
     set({ isRunning: false });
   },
 
   reset: () => {
+    clearTimer();
     const { phase } = get();
     set({ isRunning: false, remainingSeconds: secondsFor(phase) });
   },
 
   skip: () => {
+    clearTimer();
     finishPhase(set, get, false);
   },
 
   tick: () => {
     const { remainingSeconds } = get();
     if (remainingSeconds <= 1) {
+      clearTimer();
       finishPhase(set, get, true);
       return;
     }

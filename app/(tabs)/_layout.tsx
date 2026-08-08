@@ -1,45 +1,82 @@
 import React from 'react';
-import { Text } from 'react-native';
-import { Tabs } from 'expo-router';
-import { colors } from '@/theme';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Link, Slot, usePathname } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { colors, spacing, typography } from '@/theme';
+import { haptics } from '@/utils/haptics';
 
-const ICONS: Record<string, string> = {
-  index: '✓',
-  stats: '📊',
-  focus: '⏱',
-  journal: '📓',
-};
+const TABS = [
+  { href: '/', icon: '✓', label: 'Tasks' },
+  { href: '/stats', icon: '📊', label: 'Stats' },
+  { href: '/focus', icon: '⏱', label: 'Focus' },
+  { href: '/journal', icon: '📓', label: 'Journal' },
+] as const;
 
 export default function TabsLayout() {
+  const pathname = usePathname();
+  const insets = useSafeAreaInsets();
+
   return (
-    <Tabs
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarActiveTintColor: colors.accent,
-        tabBarInactiveTintColor: colors.textTertiary,
-        tabBarStyle: {
-          backgroundColor: colors.bgElevated,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          height: 84,
-          paddingTop: 8,
-          paddingBottom: 24,
-        },
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
-        },
-        tabBarIcon: ({ focused }) => (
-          <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.5 }}>
-            {ICONS[route.name]}
-          </Text>
-        ),
-      })}
-    >
-      <Tabs.Screen name="index" options={{ title: 'Tasks' }} />
-      <Tabs.Screen name="stats" options={{ title: 'Stats' }} />
-      <Tabs.Screen name="focus" options={{ title: 'Focus' }} />
-      <Tabs.Screen name="journal" options={{ title: 'Journal' }} />
-    </Tabs>
+    <View style={styles.container}>
+      <View style={styles.content}>
+        <Slot />
+      </View>
+      <View
+        style={[
+          styles.tabBar,
+          { paddingBottom: insets.bottom + spacing.sm, height: 62 + insets.bottom },
+        ]}
+      >
+        {TABS.map((tab) => {
+          const active = pathname === tab.href;
+          return (
+            <Link key={tab.href} href={tab.href} asChild replace>
+              <Pressable
+                onPress={() => haptics.selection()}
+                style={styles.tabButton}
+                hitSlop={4}
+              >
+                <Text style={[styles.icon, { opacity: active ? 1 : 0.5 }]}>{tab.icon}</Text>
+                <Text style={[styles.label, active && styles.labelActive]}>{tab.label}</Text>
+              </Pressable>
+            </Link>
+          );
+        })}
+      </View>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.bg,
+  },
+  content: {
+    flex: 1,
+  },
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: colors.bgElevated,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: spacing.sm,
+  },
+  tabButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  icon: {
+    fontSize: 20,
+  },
+  label: {
+    ...typography.micro,
+    color: colors.textTertiary,
+    textTransform: 'none',
+  },
+  labelActive: {
+    color: colors.accent,
+  },
+});
