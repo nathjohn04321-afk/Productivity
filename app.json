@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "FocusFlow",
+    "slug": "focusflow",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "focusflow",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0F0F11",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "userInterfaceStyle": "dark",
+      "bundleIdentifier": "com.focusflow.app"
+    },
+    "android": {
+      "userInterfaceStyle": "dark",
+      "package": "com.focusflow.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0F0F11",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      "expo-sharing",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#0F0F11",
+          "image": "./assets/icon.png",
+          "imageWidth": 120
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
