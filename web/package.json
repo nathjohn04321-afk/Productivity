@@ -1,0 +1,12 @@
+{
+  "name": "focusflow-web",
+  "private": true,
+  "description": "Self-contained web version of FocusFlow (single HTML file, no build step).",
+  "scripts": {
+    "test": "node test.js",
+    "serve": "npx serve ."
+  },
+  "devDependencies": {
+    "jsdom": "^30.0.0"
+  }
+}
